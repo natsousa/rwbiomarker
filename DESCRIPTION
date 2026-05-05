@@ -1,0 +1,39 @@
+Package: rwbiomarker
+Title: Biomarker-Stratified Real-World Survival Analysis
+Version: 0.1.0
+Authors@R:
+    person(given = "RWE",
+           family = "Demo",
+           email = "rwe-demo@example.com",
+           role = c("aut", "cre"))
+Description: Educational R package illustrating a biomarker-stratified
+    real-world survival analysis. Uses the publicly available
+    'survival::colon' adjuvant chemotherapy dataset as a stand-in for an
+    EHR-derived oncology cohort and augments it with a simulated tumor
+    biomarker (e.g., MSI status). Provides utilities to derive overall
+    survival, attach the biomarker, and estimate biomarker-specific
+    treatment effects via Cox proportional hazards, including
+    treatment-by-biomarker interaction tests and a subgroup forest plot.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.3)
+Imports:
+    broom,
+    rlang,
+    dplyr,
+    survival,
+    tibble
+Suggests:
+    forestplot,
+    ggplot2,
+    gtsummary,
+    knitr,
+    quarto,
+    survminer,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+URL: https://github.com/your-org/rwbiomarker
+BugReports: https://github.com/your-org/rwbiomarker/issues

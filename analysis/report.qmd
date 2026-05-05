@@ -1,0 +1,218 @@
+---
+title: "Biomarker-Stratified Treatment Effect in Real-World Colon Cancer Data"
+subtitle: "From cohort to subgroup forest plot — a reproducible RWE Analysis Report"
+author: "Natália S Kugel, PhD"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: show
+    theme: default
+    embed-resources: true
+bibliography: references.bib
+---
+
+```{r setup}
+#| include: false
+library(rwbiomarker)
+library(dplyr)
+library(ggplot2)
+library(survival)
+library(survminer)
+library(gtsummary)
+library(broom)
+
+set.seed(2026)
+theme_set(theme_minimal(base_size = 12))
+```
+
+# Background and objective
+
+Precision medicine asks a deceptively simple question: **does this
+treatment work better in some patients than in others?**  In a regulated
+RWE submission, answering this question requires a transparent and
+reproducible chain of evidence: a clearly specified cohort, a
+pre-defined biomarker, pre-specified subgroups, and statistical methods
+that handle the time-to-event nature of the data correctly.
+
+In this report we use the publicly available **NCCTG colon adjuvant
+chemotherapy cohort** (`survival::colon`) [@moertel1990levamisole] as a
+stand-in for an EHR-derived oncology dataset. The trial compared
+observation versus levamisole + 5-FU in resected colon cancer. We
+augment the cohort with a *simulated* tumor biomarker (think MSI status
+or a gene-expression signature) and ask:
+
+> **Does the treatment effect on overall survival differ between
+> biomarker-positive and biomarker-negative patients?**
+
+::: {.callout-note}
+## Content
+
+By the end of this report you should be able to:
+
+1.  Load and clean a real-world cohort.
+2.  Stratify a cohort by a biomarker.
+3.  Estimate Kaplan–Meier survival curves and Cox HRs by subgroup.
+4.  Test a treatment-by-biomarker interaction.
+5.  Visualize subgroup HRs in a forest plot.
+6.  Interpret the results in a regulatory context.
+7.  Discuss the limitations and what a regulator would want to see next.
+:::
+
+# Cohort
+
+```{r cohort}
+cohort <- load_colon() |> add_biomarker(prevalence = 0.35, seed = 7)
+glimpse(cohort)
+```
+
+```{r tbl1}
+cohort |>
+  select(treatment, biomarker, age, sex, nodes, differ, extent) |>
+  tbl_summary(
+    by = treatment,
+    statistic = list(all_continuous() ~ "{mean} ({sd})",
+                     all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) |>
+  add_overall() |>
+  modify_caption("**Table 1. Baseline characteristics by treatment arm.**")
+```
+
+# Overall Kaplan–Meier
+
+```{r km-overall}
+#| label: fig-km-overall
+#| fig-cap: "**Overall survival by treatment arm.** Kaplan–Meier estimates of overall survival in the full cohort (n = 619; 291 deaths) comparing adjuvant Lev+5FU (orange) versus observation (blue). Shaded bands denote pointwise 95% confidence intervals; the risk table below the curves reports the number of patients still at risk at each timepoint. The Lev+5FU curve lies consistently above the observation curve from approximately one year onward, indicating a sustained survival advantage. This visual separation is consistent with the unadjusted hazard ratio of 0.69 (95% CI 0.55–0.87; p = 0.002) reported in Section *Subgroup hazard ratios*. Time is expressed in days since enrollment."
+#| fig-width: 8
+#| fig-height: 6
+fit <- survfit(Surv(time, status) ~ treatment, data = cohort)
+ggsurvplot(fit, data = cohort, conf.int = TRUE, risk.table = TRUE,
+           palette = c("#4C78A8", "#F58518"),
+           legend.labs = c("Obs", "Lev+5FU"),
+           xlab = "Days since enrollment", ylab = "Overall survival")
+```
+
+# Biomarker-stratified Kaplan–Meier
+
+```{r km-strat}
+#| label: fig-km-strat
+#| fig-cap: "**Overall survival by treatment arm, stratified by biomarker status.** Kaplan–Meier curves for Lev+5FU (orange) versus observation (blue) in biomarker-positive (left; n = 217, 102 events) and biomarker-negative (right; n = 402, 189 events) strata. Shaded bands denote 95% pointwise confidence intervals. Curve separation is visually similar across strata, consistent with subgroup HRs of 0.70 (95% CI 0.48–1.04) and 0.68 (95% CI 0.51–0.91) and a non-significant pre-specified treatment-by-biomarker interaction test (LRT p = 0.89). The wider confidence bands in the biomarker-positive panel reflect the smaller number of events rather than a diminished treatment effect."
+#| fig-width: 10
+#| fig-height: 5
+fit_pos <- survfit(Surv(time, status) ~ treatment,
+                   data = filter(cohort, biomarker == "Positive"))
+fit_neg <- survfit(Surv(time, status) ~ treatment,
+                   data = filter(cohort, biomarker == "Negative"))
+
+p_pos <- ggsurvplot(fit_pos, data = filter(cohort, biomarker == "Positive"),
+                    conf.int = TRUE, palette = c("#4C78A8", "#F58518"),
+                    title = "Biomarker positive",
+                    legend.labs = c("Obs", "Lev+5FU"))$plot
+p_neg <- ggsurvplot(fit_neg, data = filter(cohort, biomarker == "Negative"),
+                    conf.int = TRUE, palette = c("#4C78A8", "#F58518"),
+                    title = "Biomarker negative",
+                    legend.labs = c("Obs", "Lev+5FU"))$plot
+gridExtra::grid.arrange(p_pos, p_neg, ncol = 2)
+```
+
+# Subgroup hazard ratios
+
+```{r hr-subgroup}
+sg <- fit_subgroup_hr(cohort) |>
+  filter(term == "treatmentLev+5FU") |>
+  transmute(subgroup, n, events,
+            HR = round(estimate, 2),
+            `95% CI` = sprintf("%.2f – %.2f", conf.low, conf.high),
+            `p-value` = signif(p.value, 3))
+knitr::kable(sg,
+             caption = "Treatment effect (Lev+5FU vs Obs) on OS by biomarker stratum.")
+```
+
+
+**Interpretation:** 
+Adjuvant Lev+5FU was associated with a statistically
+significant reduction in the hazard of death in the overall cohort
+(HR 0.69, 95% CI 0.55–0.87; p = 0.0017), corresponding to an estimated
+31% relative risk reduction versus observation. Subgroup-specific
+estimates were essentially identical in biomarker-positive
+(HR 0.70, 95% CI 0.48–1.04) and biomarker-negative
+(HR 0.68, 95% CI 0.51–0.91) patients, with fully overlapping confidence
+intervals. The wider interval and larger p-value in the
+biomarker-positive subgroup reflect the smaller number of events
+(n = 102 vs. 189) rather than a smaller treatment effect; the difference
+in subgroup p-values is therefore **not** evidence of effect
+modification. Formal assessment of a predictive biomarker effect is
+deferred to the pre-specified treatment-by-biomarker interaction test
+(Section *Treatment × biomarker interaction*), in line with regulatory
+guidance that subgroup p-value comparisons should not be used to infer
+heterogeneity of treatment effect.
+
+
+## Forest plot
+
+```{r forest}
+#| label: fig-forest
+#| fig-cap: "**Forest plot of treatment effect on overall survival by biomarker subgroup.** Hazard ratios (HR) for Lev+5FU vs. observation are shown on a logarithmic scale; horizontal lines denote 95% confidence intervals. Point estimates were near-identical across biomarker-positive (HR 0.70) and biomarker-negative (HR 0.68) strata, with overlapping confidence intervals, consistent with the non-significant pre-specified interaction test (LRT p = 0.89). The wider interval in the biomarker-positive subgroup reflects fewer events (102 vs. 189) rather than a smaller treatment effect."
+#| fig-width: 10
+#| fig-height: 5
+plot_data <- fit_subgroup_hr(cohort) |>
+  filter(term == "treatmentLev+5FU") |>
+  mutate(label = sprintf("%s (n=%d, events=%d)", subgroup, n, events))
+
+ggplot(plot_data,
+       aes(y = reorder(label, estimate),
+           x = estimate, xmin = conf.low, xmax = conf.high)) +
+  geom_pointrange(color = "#1f77b4", size = 0.6) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  scale_x_log10() +
+  labs(x = "Hazard ratio (log scale)", y = NULL,
+       title = "Forest plot: treatment effect by biomarker subgroup",
+       subtitle = "HR < 1 favors Lev+5FU")
+```
+
+# Treatment × biomarker interaction
+
+```{r interaction}
+out <- fit_interaction_cox(cohort)
+out$coefs |>
+  transmute(term, HR = round(estimate, 2),
+            `95% CI` = sprintf("%.2f – %.2f", conf.low, conf.high),
+            `p-value` = signif(p.value, 3)) |>
+  knitr::kable(caption = "Adjusted Cox model with treatment x biomarker interaction.")
+```
+
+The likelihood-ratio test p-value for the interaction is
+**`r signif(out$lrt_p, 3)`**.
+
+
+**Interpretation.** 
+The pre-specified treatment-by-biomarker interaction was not
+significant (HR 0.97, 95% CI 0.59–1.59; LRT p = 0.89), providing
+no evidence of a predictive biomarker effect; the overall survival
+benefit of Lev+5FU was consistent across biomarker strata.
+
+
+# Limitations and discussion
+
+- The biomarker here is **simulated**; in a real submission, biomarker
+  assay validation and pre-specification are essential.
+- The colon dataset is from a randomized trial — for a true RWE study,
+  one would also handle confounding (e.g., propensity score adjustment).
+- Multiplicity: subgroup HRs and the interaction test should be
+  interpreted with appropriate adjustment.
+- The proportional-hazards assumption should be checked
+  (`cox.zph`) — left as an exercise.
+
+# Reproducibility
+
+```{r repro}
+sessionInfo()
+```
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
