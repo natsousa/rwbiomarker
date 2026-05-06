@@ -24,7 +24,7 @@
     "postCreateCommand": [
         "bash",
         "-lc",
-        "apt-get update && apt-get install -y --no-install-recommends libnlopt-dev; Rscript -e 'install.packages(c(\"xfun\",\"knitr\",\"rmarkdown\",\"gtsummary\",\"forestplot\"), repos=\"https://cloud.r-project.org\")'; Rscript -e 'install.packages(\"survminer\", repos=\"https://CRAN.R-project.org\")'; Rscript -e 'devtools::install(\".\", upgrade=\"never\")'"
+        "apt-get update && apt-get install -y --no-install-recommends libnlopt-dev; Rscript -e 'install.packages(c(\"xfun\",\"knitr\",\"rmarkdown\",\"gtsummary\",\"forestplot\"), repos=\"https://cloud.r-project.org\")'; Rscript -e 'install.packages(\"survminer\", repos=\"https://CRAN.R-project.org\")'; Rscript -e 'devtools::install(\".\", upgrade=FALSE)'"
     ],
     "remoteUser": "root",
     // Ports used to view the rendered report in a browser tab.
