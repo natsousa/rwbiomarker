@@ -41,10 +41,25 @@ jobs:
         run: Rscript -e 'devtools::test(stop_on_failure = TRUE)'
 
       - name: Render Quarto report
-        run: quarto render analysis/report.qmd
+        run: |
+          mkdir -p docs
+          quarto render analysis/report.qmd --output docs/index.html
+
+      - name: Commit rendered docs
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html docs/index_files || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Update GitHub Pages docs from workflow [skip ci]"
+            git push origin HEAD:main
+          else
+            echo "No docs changes to commit"
+          fi
 
       - name: Upload rendered report
         uses: actions/upload-artifact@v4
         with:
           name: rwbiomarker-report
-          path: analysis/report.html
+          path: docs/index.html

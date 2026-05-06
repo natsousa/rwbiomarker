@@ -112,6 +112,8 @@ open analysis/report.html
   want a lockfile).
 - The biomarker simulation uses a **fixed seed**.
 - **CI** runs the tests and re-renders the report on every push.
+- The rendered report can be published as a GitHub Pages site from the
+  `docs/` folder if Pages is enabled for this repository.
 
 ---
 
