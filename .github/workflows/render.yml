@@ -43,7 +43,9 @@ jobs:
       - name: Render Quarto report
         run: |
           mkdir -p docs
-          quarto render analysis/report.qmd --output-dir docs
+          cd analysis
+          quarto render report.qmd --output-dir ../docs
+          cd ..
           if [ -f docs/report.html ]; then
             mv docs/report.html docs/index.html
           fi

@@ -5,7 +5,7 @@
 .Rproj.user/
 *.tar.gz
 *.Rcheck/
-/.quarto/
+**/.quarto/
 /_freeze/
 analysis/report.html
 analysis/report_files/
