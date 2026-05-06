@@ -14,8 +14,8 @@ hazards models.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/your-org/rwbiomarker}
-  \item Report bugs at \url{https://github.com/your-org/rwbiomarker/issues}
+  \item \url{https://github.com/natsousa/rwbiomarker}
+  \item Report bugs at \url{https://github.com/natsousa/rwbiomarker/issues}
 }
 
 }

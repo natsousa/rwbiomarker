@@ -6,7 +6,7 @@
 > biomarker, and estimates **biomarker-specific treatment effects** on
 > overall survival.
 
-[![render-report](https://github.com/your-org/rwbiomarker/actions/workflows/render.yml/badge.svg)](https://github.com/your-org/rwbiomarker/actions/workflows/render.yml)
+[![render-report](https://github.com/natsousa/rwbiomarker/actions/workflows/render.yml/badge.svg)](https://github.com/natsousa/rwbiomarker/actions/workflows/render.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
 ---
